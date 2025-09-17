@@ -2,7 +2,7 @@
 
 import os
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -18,10 +18,26 @@ class AIConfig:
     """AI service configuration."""
 
     provider: str = "openai"
-    model: str = "gpt-4.1"
+    model: str = "gpt-4o"
     api_key: str = ""
     max_tokens: int = 4000
     temperature: float = 0.1
+    base_url: str = None  # For custom API endpoints
+
+    # Agentic review settings
+    enable_agentic_review: bool = True
+    max_context_iterations: int = 5
+    max_context_calls_per_iteration: int = 3
+
+    def to_provider_config(self) -> Dict[str, Any]:
+        """Convert to provider-specific configuration."""
+        return {
+            "api_key": self.api_key,
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "base_url": self.base_url,
+        }
 
 
 @dataclass

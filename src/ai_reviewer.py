@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 from typing import Any, Dict
 
 from openai import AsyncOpenAI, OpenAI
@@ -19,6 +18,7 @@ from .models import (
     ReviewIssue,
     ReviewSeverity,
 )
+from .prompt_manager import PromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +32,7 @@ class AIReviewer:
         self.client = OpenAI(api_key=config.api_key)
         self.async_client = AsyncOpenAI(api_key=config.api_key)
         self.diff_parser = DiffParser()
-        self.prompt = self._load_prompt()
-        self.client = OpenAI(api_key=config.api_key)
-
-    def _load_prompt(self) -> str:
-        """Load the system prompt from prompt.md."""
-        try:
-            # Look for prompt.md in the same directory as this file
-            prompt_path = os.path.join(os.path.dirname(__file__), "prompt.md")
-            with open(prompt_path, "r") as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error("prompt.md not found. Please create it in the src directory.")
-            return "You are a helpful code reviewer."
+        self.prompt_manager = PromptManager()
 
     def analyze_file(self, file_diff: FileDiff) -> ReviewAnalysis:
         """Analyze a single file and generate review comments."""
@@ -76,17 +64,11 @@ class AIReviewer:
     async def _analyze_hunk_async(self, file_diff: FileDiff, hunk: DiffHunk):
         """Analyze a single hunk of a file asynchronously."""
         try:
-            ai_response = await self._generate_ai_analysis_async(
-                file_diff.filename, hunk
-            )
-            issues, comments = self._process_ai_response(
-                ai_response, file_diff.filename, hunk
-            )
+            ai_response = await self._generate_ai_analysis_async(file_diff.filename, hunk)
+            issues, comments = self._process_ai_response(ai_response, file_diff.filename, hunk)
             return issues, comments
         except Exception as e:
-            logger.error(
-                f"Error analyzing hunk for {file_diff.filename}: {e}", exc_info=True
-            )
+            logger.error(f"Error analyzing hunk for {file_diff.filename}: {e}", exc_info=True)
             return [], []
 
     def _create_empty_analysis(self, file_path: str, reason: str) -> ReviewAnalysis:
@@ -134,12 +116,10 @@ class AIReviewer:
 
         return "Unknown"
 
-    async def _generate_ai_analysis_async(
-        self, filename: str, hunk: DiffHunk
-    ) -> Dict[str, Any]:
+    async def _generate_ai_analysis_async(self, filename: str, hunk: DiffHunk) -> Dict[str, Any]:
         """Generate AI analysis for a single hunk."""
         language = self._get_file_language(filename)
-        system_prompt = self.prompt.format(language=language)
+        system_prompt = self.prompt_manager.get_traditional_review_prompt(language)
         user_prompt = self._create_user_prompt_for_hunk(filename, hunk)
 
         function_schema = {
@@ -181,8 +161,7 @@ class AIReviewer:
                                 "target_lines": {
                                     "type": "array",
                                     "description": (
-                                        "Line numbers from the diff that this "
-                                        "issue applies to"
+                                        "Line numbers from the diff that this " "issue applies to"
                                     ),
                                     "items": {"type": "integer"},
                                 },
@@ -279,10 +258,7 @@ class AIReviewer:
                 target_lines = issue_data.get("target_lines", [])
 
                 if not target_lines:
-                    logger.warning(
-                        f"Issue '{issue_data.get('title')}' has no target_lines, "
-                        f"skipping"
-                    )
+                    logger.warning(f"Issue '{issue_data.get('title')}' has no target_lines, " f"skipping")
                     continue
 
                 # Find the actual diff lines for the target line numbers
@@ -312,9 +288,7 @@ class AIReviewer:
                 issues.append(issue)
 
                 # Create the review comment using hunk-aware logic
-                comment = self._create_comment_from_diff_lines(
-                    diff_lines, issue, filename, hunk
-                )
+                comment = self._create_comment_from_diff_lines(diff_lines, issue, filename, hunk)
 
                 if comment:
                     comments.append(comment)
@@ -330,10 +304,7 @@ class AIReviewer:
         diff_lines = []
         for target_line in target_lines:
             for line in hunk.lines:
-                if (
-                    line.new_line_number == target_line
-                    or line.old_line_number == target_line
-                ):
+                if line.new_line_number == target_line or line.old_line_number == target_line:
                     diff_lines.append(line)
                     break
         return diff_lines
@@ -375,22 +346,12 @@ class AIReviewer:
             return (best_start, best_end)
 
         # Partition lines by type
-        added_lines = [
-            diff_line for diff_line in diff_lines if diff_line.type == LineType.ADDED
-        ]
-        removed_lines = [
-            diff_line for diff_line in diff_lines if diff_line.type == LineType.REMOVED
-        ]
+        added_lines = [diff_line for diff_line in diff_lines if diff_line.type == LineType.ADDED]
+        removed_lines = [diff_line for diff_line in diff_lines if diff_line.type == LineType.REMOVED]
 
-        added_nums = [
-            diff_line.new_line_number
-            for diff_line in added_lines
-            if diff_line.new_line_number
-        ]
+        added_nums = [diff_line.new_line_number for diff_line in added_lines if diff_line.new_line_number]
         removed_nums = [
-            diff_line.old_line_number
-            for diff_line in removed_lines
-            if diff_line.old_line_number
+            diff_line.old_line_number for diff_line in removed_lines if diff_line.old_line_number
         ]
 
         added_range = longest_consecutive_range(added_nums)
@@ -407,9 +368,7 @@ class AIReviewer:
                 return 0
             return r[1] - r[0]
 
-        if added_range and range_length(added_range) >= max(
-            1, range_length(removed_range)
-        ):
+        if added_range and range_length(added_range) >= max(1, range_length(removed_range)):
             start_line_number, line_number = added_range
             side = "RIGHT"
             start_side = "RIGHT"
@@ -505,9 +464,7 @@ class AIReviewer:
         for ln in lines:
             if ln.strip():
                 # Strip the common minimal indent, then apply base indent
-                without_common = (
-                    ln[min_indent:] if len(ln) >= min_indent else ln.lstrip()
-                )
+                without_common = ln[min_indent:] if len(ln) >= min_indent else ln.lstrip()
                 reindented.append(f"{base_indent}{without_common}")
             else:
                 reindented.append(ln)
@@ -532,10 +489,7 @@ class AIReviewer:
         }
         color = color_map.get(severity, "lightgrey")
         label = severity.value.capitalize()
-        return (
-            f"![Severity: {label}]"
-            f"(https://img.shields.io/badge/Severity-{label}-{color})"
-        )
+        return f"![Severity: {label}]" f"(https://img.shields.io/badge/Severity-{label}-{color})"
 
     def _clean_suggestion(self, suggestion: str) -> str:
         """Clean suggestion to ensure it's pure code only."""

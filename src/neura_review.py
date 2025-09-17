@@ -6,9 +6,12 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
+from .agentic_reviewer import AgenticReviewer
+from .ai_provider_factory import AIProviderFactory
 from .ai_reviewer import AIReviewer
 from .comment_manager import CommentManager
 from .config import Config
+from .context_tool import ContextTool
 from .diff_parser import DiffParser
 from .github_client import GitHubClient
 from .models import FileDiff, ReviewAnalysis
@@ -34,12 +37,23 @@ class NeuraReview:
         self.config = config
         self.github_client = GitHubClient(config.github)
         self.diff_parser = DiffParser()
-        self.ai_reviewer = AIReviewer(config.ai)
         self.comment_manager = CommentManager()
 
-    def review_pull_request(
-        self, repo_name: str, pr_number: int, dry_run: bool = False
-    ) -> bool:
+        # Initialize AI components based on configuration
+        if config.ai.enable_agentic_review:
+            logger.info("Initializing agentic review system")
+            self.ai_provider = AIProviderFactory.create_provider(config.ai)
+            self.context_tool = None  # Will be initialized per PR
+            self.agentic_reviewer = None  # Will be initialized per PR
+            self.ai_reviewer = None  # Not used in agentic mode
+        else:
+            logger.info("Initializing traditional review system")
+            self.ai_reviewer = AIReviewer(config.ai)
+            self.ai_provider = None
+            self.context_tool = None
+            self.agentic_reviewer = None
+
+    def review_pull_request(self, repo_name: str, pr_number: int, dry_run: bool = False) -> bool:
         """Review a pull request and post comments."""
         try:
             logger.info(f"Starting review of PR #{pr_number} in {repo_name}")
@@ -59,6 +73,16 @@ class NeuraReview:
 
             logger.info(f"Found {len(pr_data.files)} files to review")
 
+            # Initialize agentic components if needed
+            if self.config.ai.enable_agentic_review:
+                self.context_tool = ContextTool(self.github_client, pr_data)
+                self.agentic_reviewer = AgenticReviewer(
+                    ai_provider=self.ai_provider,
+                    context_tool=self.context_tool,
+                    max_iterations=self.config.ai.max_context_iterations,
+                    max_context_calls_per_iteration=self.config.ai.max_context_calls_per_iteration,
+                )
+
             # Filter files for review
             reviewable_files = self._filter_reviewable_files(pr_data.files)
             logger.info(
@@ -72,7 +96,10 @@ class NeuraReview:
 
             # Analyze files
             logger.info("Starting AI analysis...")
-            analyses = asyncio.run(self._analyze_files_async(reviewable_files))
+            if self.config.ai.enable_agentic_review:
+                analyses = asyncio.run(self._analyze_files_agentic(reviewable_files))
+            else:
+                analyses = asyncio.run(self._analyze_files_async(reviewable_files))
 
             if not analyses:
                 logger.warning("No analyses generated")
@@ -110,10 +137,7 @@ class NeuraReview:
             )
 
             if success:
-                logger.info(
-                    "Successfully posted review with "
-                    f"{len(review_data['comments'])} comments"
-                )
+                logger.info("Successfully posted review with " f"{len(review_data['comments'])} comments")
             else:
                 logger.error("Failed to post review")
 
@@ -147,10 +171,7 @@ class NeuraReview:
     def _should_skip_file(self, file_diff: FileDiff) -> bool:
         """Determine if a file should be skipped from review."""
         # Skip by file extension
-        if any(
-            file_diff.filename.lower().endswith(ext)
-            for ext in self.config.review.skip_file_types
-        ):
+        if any(file_diff.filename.lower().endswith(ext) for ext in self.config.review.skip_file_types):
             logger.debug(f"Skipping {file_diff.filename} (file type excluded)")
             return True
 
@@ -160,11 +181,7 @@ class NeuraReview:
             return True
 
         # Skip renamed files with no content changes
-        if (
-            file_diff.status == "renamed"
-            and file_diff.additions == 0
-            and file_diff.deletions == 0
-        ):
+        if file_diff.status == "renamed" and file_diff.additions == 0 and file_diff.deletions == 0:
             logger.debug(f"Skipping {file_diff.filename} (renamed without changes)")
             return True
 
@@ -185,8 +202,7 @@ class NeuraReview:
         max_workers = min(len(files), 5)  # Cap at 5 to avoid API rate limits
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_file = {
-                executor.submit(self.ai_reviewer.analyze_file, file_diff): file_diff
-                for file_diff in files
+                executor.submit(self.ai_reviewer.analyze_file, file_diff): file_diff for file_diff in files
             }
 
             for future in as_completed(future_to_file):
@@ -196,10 +212,7 @@ class NeuraReview:
                     # Only include analyses with issues
                     if analysis and analysis.issues:
                         analyses.append(analysis)
-                        logger.info(
-                            f"Found {len(analysis.issues)} issues in "
-                            f"{file_diff.filename}"
-                        )
+                        logger.info(f"Found {len(analysis.issues)} issues in " f"{file_diff.filename}")
                     else:
                         logger.debug(f"No issues found in {file_diff.filename}")
                 except Exception as e:
@@ -217,10 +230,7 @@ class NeuraReview:
                 self.diff_parser.parse_file_diff(file_diff)
 
                 # Analyze hunks in parallel
-                tasks = [
-                    self.ai_reviewer._analyze_hunk_async(file_diff, hunk)
-                    for hunk in file_diff.hunks
-                ]
+                tasks = [self.ai_reviewer._analyze_hunk_async(file_diff, hunk) for hunk in file_diff.hunks]
                 if not tasks:
                     logger.debug(f"No hunks found in {file_diff.filename}")
                     return
@@ -231,9 +241,7 @@ class NeuraReview:
                 all_comments = []
                 for result in results:
                     if isinstance(result, Exception):
-                        logger.error(
-                            f"Hunk analysis failed for {file_diff.filename}: {result}"
-                        )
+                        logger.error(f"Hunk analysis failed for {file_diff.filename}: {result}")
                         continue
                     issues, comments = result
                     all_issues.extend(issues)
@@ -249,9 +257,7 @@ class NeuraReview:
 
                 if analysis.issues:
                     analyses.append(analysis)
-                    logger.info(
-                        f"Found {len(analysis.issues)} issues in {file_diff.filename}"
-                    )
+                    logger.info(f"Found {len(analysis.issues)} issues in {file_diff.filename}")
                 else:
                     logger.debug(f"No issues found in {file_diff.filename}")
             except Exception as e:
@@ -267,6 +273,43 @@ class NeuraReview:
         await asyncio.gather(*(sem_task(f) for f in files))
         return analyses
 
+    async def _analyze_files_agentic(self, files: List[FileDiff]) -> List[ReviewAnalysis]:
+        """Analyze files using the agentic reviewer."""
+        analyses: List[ReviewAnalysis] = []
+
+        async def analyze_one_agentic(file_diff: FileDiff) -> None:
+            try:
+                # Ensure hunks are parsed
+                self.diff_parser.parse_file_diff(file_diff)
+
+                if not file_diff.hunks:
+                    logger.debug(f"No hunks found in {file_diff.filename}")
+                    return
+
+                # Use agentic reviewer for comprehensive analysis
+                analysis = await self.agentic_reviewer.analyze_file(file_diff)
+
+                if analysis and analysis.issues:
+                    analyses.append(analysis)
+                    logger.info(
+                        f"Agentic analysis found {len(analysis.issues)} issues in {file_diff.filename}"
+                    )
+                else:
+                    logger.debug(f"No issues found in {file_diff.filename}")
+
+            except Exception as e:
+                logger.error(f"Failed to analyze {file_diff.filename} with agentic reviewer: {e}")
+
+        # Limit concurrency for agentic analysis (more resource intensive)
+        semaphore = asyncio.Semaphore(2)  # Lower concurrency for agentic analysis
+
+        async def sem_task(fd: FileDiff):
+            async with semaphore:
+                await analyze_one_agentic(fd)
+
+        await asyncio.gather(*(sem_task(f) for f in files))
+        return analyses
+
     def _log_review_preview(self, review_data):
         """Log a preview of the review for dry runs."""
         logger.info("=== REVIEW PREVIEW ===")
@@ -276,9 +319,7 @@ class NeuraReview:
 
         for i, comment in enumerate(review_data["comments"], 1):
             line_info = (
-                f"{comment.line}"
-                if comment.start_line is None
-                else f"{comment.start_line}-{comment.line}"
+                f"{comment.line}" if comment.start_line is None else f"{comment.start_line}-{comment.line}"
             )
             logger.info(f"Comment {i}: {comment.path}:{line_info} ({comment.side})")
             logger.info(f"Severity: {comment.severity.value}")
@@ -304,7 +345,19 @@ class NeuraReview:
                 return None
 
             logger.info(f"Analyzing single file: {filename}")
-            return self.ai_reviewer.analyze_file(target_file)
+
+            if self.config.ai.enable_agentic_review:
+                # Initialize agentic components for single file analysis
+                self.context_tool = ContextTool(self.github_client, pr_data)
+                self.agentic_reviewer = AgenticReviewer(
+                    ai_provider=self.ai_provider,
+                    context_tool=self.context_tool,
+                    max_iterations=self.config.ai.max_context_iterations,
+                    max_context_calls_per_iteration=self.config.ai.max_context_calls_per_iteration,
+                )
+                return asyncio.run(self.agentic_reviewer.analyze_file(target_file))
+            else:
+                return self.ai_reviewer.analyze_file(target_file)
 
         except Exception as e:
             logger.error(f"Error analyzing single file {filename}: {e}")
