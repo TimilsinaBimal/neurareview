@@ -207,6 +207,11 @@ def get_review_analysis_schema() -> Dict[str, Any]:
                                 "type": ["string", "null"],
                                 "description": "Suggested fix or improvement (code only, no explanations)",
                             },
+                            "side": {
+                                "type": "string",
+                                "enum": ["LEFT", "RIGHT"],
+                                "description": "Which side of the diff this issue applies to. LEFT for deleted/old code, RIGHT for added/new code",
+                            },
                             "context_used": {
                                 "type": "array",
                                 "description": "List of context sources that informed this issue (e.g., related files examined)",
@@ -220,6 +225,7 @@ def get_review_analysis_schema() -> Dict[str, Any]:
                             "change_type",
                             "target_lines",
                             "suggestion",
+                            "side",
                         ],
                         "additionalProperties": False,
                     },

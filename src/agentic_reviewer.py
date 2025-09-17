@@ -282,6 +282,9 @@ sufficient context from the diff alone, provide your final analysis using
                         suggestion=issue_data.get("suggestion"),
                         change_type=change_type,
                     )
+
+                    # Store the AI-determined side for comment creation
+                    issue._ai_side = issue_data.get("side", "RIGHT")
                     issues.append(issue)
 
                     # Create corresponding comment
@@ -324,12 +327,17 @@ sufficient context from the diff alone, provide your final analysis using
             if issue.suggestion:
                 comment_body += f"\n\n```suggestion\n{issue.suggestion}\n```"
 
+            # Use AI-determined side, with RIGHT as fallback
+            side = getattr(issue, "_ai_side", "RIGHT")
+            start_side = side if issue.start_line is not None else None
+
             return ReviewComment(
                 body=comment_body,
                 path=file_diff.filename,
                 line=issue.line,
                 start_line=issue.start_line,
-                side="RIGHT",  # Assuming changes are on the right side
+                side=side,
+                start_side=start_side,
                 severity=issue.severity,
             )
 
