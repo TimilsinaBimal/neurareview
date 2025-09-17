@@ -56,6 +56,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      metadata: read
 
     steps:
       - name: Checkout repository

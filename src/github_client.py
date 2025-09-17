@@ -157,8 +157,13 @@ class GitHubClient:
     def validate_connection(self) -> bool:
         """Validate GitHub connection and permissions."""
         try:
-            user = self.github.get_user()
-            logger.info(f"Connected to GitHub as: {user.login}")
+            # Try to access the GitHub API rate limit instead of user info
+            # This requires minimal permissions and validates the token
+            rate_limit = self.github.get_rate_limit()
+            logger.info(
+                f"GitHub API rate limit: "
+                f"{rate_limit.core.remaining}/{rate_limit.core.limit}"
+            )
             return True
         except GithubException as e:
             logger.error(f"GitHub connection failed: {e}")
