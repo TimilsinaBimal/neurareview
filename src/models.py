@@ -93,7 +93,7 @@ class ReviewIssue:
     start_line: Optional[int]  # Start line of the comment
     suggestion: Optional[str] = None
     category: str = "general"
-    change_type: ChangeType = ChangeType.OTHER
+    change_type: ChangeType = ChangeType.BUG
 
 
 @dataclass

@@ -9,9 +9,10 @@
 - **🤖 Intelligent Code Analysis**: Leverages GPT-4o for deep, context-aware analysis of code changes.
 - **🎯 Precise Commenting**: Pinpoints the exact line of code for each comment, eliminating confusion.
 - **✅ Actionable Suggestions**: Provides clean, pure-code suggestions in GitHub's native format, ready for one-click application.
-- **⚙️ Comprehensive Review**: Analyzes every added and removed line to ensure no issue is missed.
+- **🔍 Focused Reviews**: Only flags critical issues (security, memory, performance, bugs) - no noise!
 - **📈 Severity Categorization**: Classifies issues as Critical, High, Medium, or Low to prioritize fixes.
 - **🔌 Seamless GitHub Integration**: Fetches PRs, posts reviews, and integrates smoothly into your workflow.
+- **⚡ GitHub Action Ready**: Use as a GitHub Action with just a comment trigger!
 - **🔧 Highly Configurable**: Easily customize review parameters, skip specific file types, and more.
 - **🛡️ Dry Run Mode**: Preview the review comments in your terminal before posting to GitHub.
 - **🗣️ Multi-Language Support**: Expert analysis for a wide range of programming languages.
@@ -31,7 +32,70 @@ NeuraReview follows a robust, multi-step process to deliver high-quality code re
 
 ---
 
-## ⚙️ Installation & Configuration
+## ⚡ GitHub Action (Recommended)
+
+The easiest way to use NeuraReview is as a GitHub Action. Just comment `/neurareview review` on any PR!
+
+### Quick Setup
+
+1. **Add the workflow** to your repository (`.github/workflows/neura-review.yml`):
+
+```yaml
+name: NeuraReview
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  neura-review:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/neurareview review')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run NeuraReview
+        uses: TimilsinaBimal/neurareview@main
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_number: ${{ github.event.issue.number }}
+          repo_name: ${{ github.repository }}
+```
+
+2. **Add your OpenAI API key** as a repository secret:
+   - Go to your repository → Settings → Secrets and variables → Actions
+   - Add `OPENAI_API_KEY` with your OpenAI API key
+
+3. **Use it!** Comment `/neurareview review` on any pull request.
+
+### What NeuraReview Reviews
+
+✅ **Critical Issues Only:**
+- Security vulnerabilities (SQL injection, XSS, hardcoded secrets)
+- Memory issues (leaks, buffer overflows, resource leaks)
+- Performance problems (O(n²) algorithms, N+1 queries)
+- Critical bugs (null pointer exceptions, race conditions)
+- Error handling (missing try-catch blocks)
+
+❌ **What It Ignores:**
+- Code style and formatting
+- Documentation suggestions
+- Minor refactoring opportunities
+- Educational comments
+
+[📖 Full GitHub Action Documentation](ACTION_USAGE.md)
+
+---
+
+## ⚙️ Local Installation & Configuration
 
 ### 1. Prerequisites
 - Python 3.8+
