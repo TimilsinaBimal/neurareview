@@ -172,13 +172,10 @@ class AIReviewer:
                                     "type": "string",
                                     "enum": [
                                         "bug",
-                                        "refactor",
-                                        "style",
                                         "performance",
                                         "security",
-                                        "documentation",
-                                        "test",
-                                        "other",
+                                        "memory",
+                                        "error_handling",
                                     ],
                                 },
                                 "target_lines": {

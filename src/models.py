@@ -16,16 +16,13 @@ class ReviewSeverity(Enum):
 
 
 class ChangeType(Enum):
-    """Types of changes for review comments."""
+    """Types of changes for review comments - focused on critical issues only."""
 
     BUG = "bug"
-    REFACTOR = "refactor"
-    STYLE = "style"
     PERFORMANCE = "performance"
     SECURITY = "security"
-    DOCUMENTATION = "documentation"
-    TEST = "test"
-    OTHER = "other"
+    MEMORY = "memory"
+    ERROR_HANDLING = "error_handling"
 
 
 class LineType(Enum):

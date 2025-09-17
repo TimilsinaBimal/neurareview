@@ -78,12 +78,12 @@ class NeuraReview:
                 logger.warning("No analyses generated")
                 return False
 
-            # Prepare review data
-            logger.info("Preparing review comments...")
+            # Prepare review data - focused on critical issues only
+            logger.info("Preparing review comments (critical issues only)...")
             review_data = self.comment_manager.prepare_review_data(
                 analyses,
-                max_comments_per_file=10,
-                min_confidence=self.config.review.min_confidence,
+                max_comments_per_file=5,  # Reduced for focused reviews
+                min_confidence=0.8,  # Higher confidence threshold
             )
 
             # Log review statistics
