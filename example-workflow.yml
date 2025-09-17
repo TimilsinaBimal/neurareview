@@ -1,4 +1,7 @@
-name: Code Review
+# Example workflow for using NeuraReview in your repository
+# Copy this to .github/workflows/neura-review.yml in your repository
+
+name: NeuraReview
 
 on:
   issue_comment:

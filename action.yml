@@ -1,0 +1,41 @@
+name: 'NeuraReview'
+description: 'AI-powered code review bot that focuses on critical issues'
+author: 'Bimal Timilsina'
+
+inputs:
+  openai_api_key:
+    description: 'OpenAI API key for AI analysis'
+    required: true
+  github_token:
+    description: 'GitHub token for repository access'
+    required: true
+    default: ${{ github.token }}
+  pr_number:
+    description: 'Pull request number to review'
+    required: true
+  repo_name:
+    description: 'Repository name in format owner/repo'
+    required: true
+    default: ${{ github.repository }}
+  dry_run:
+    description: 'Run in dry-run mode (preview only)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - '--repo'
+    - '${{ inputs.repo_name }}'
+    - '--pr'
+    - '${{ inputs.pr_number }}'
+    - '--github-token'
+    - '${{ inputs.github_token }}'
+    - '--openai-api-key'
+    - '${{ inputs.openai_api_key }}'
+    - '--verbose'
+
+branding:
+  icon: 'robot'
+  color: 'blue'
