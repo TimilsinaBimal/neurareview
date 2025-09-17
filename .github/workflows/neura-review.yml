@@ -1,0 +1,57 @@
+name: NeuraReview / Slash Command
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+concurrency:
+  group: code-review-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/code-review')
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install NeuraReview
+        run: |
+          pip install .
+
+      - name: Build CLI args from comment
+        id: args
+        shell: bash
+        run: |
+          BODY="${{ github.event.comment.body }}"
+          ARGS=""
+          if [[ "$BODY" =~ (--dry-run) ]]; then ARGS="$ARGS --dry-run"; fi
+          if [[ "$BODY" =~ (--file[[:space:]]+([^[:space:]]+)) ]]; then ARGS="$ARGS --file ${BASH_REMATCH[2]}"; fi
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+
+      - name: Run NeuraReview
+        run: |
+          neura-review \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.issue.number }}" \
+            ${{ steps.args.outputs.args }}
+
+

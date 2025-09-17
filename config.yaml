@@ -1,0 +1,57 @@
+# NeuraReview Configuration
+# Copy this to config.local.yaml and customize as needed
+
+github:
+  # GitHub personal access token (can also use GITHUB_TOKEN env var)
+  token: ${GITHUB_TOKEN}
+  api_url: "https://api.github.com"
+
+ai:
+  # AI provider configuration
+  provider: "openai"
+  model: "gpt-4o"
+  api_key: ${OPENAI_API_KEY}
+  max_tokens: 4000
+  temperature: 0.1
+
+review:
+  # Review behavior settings
+  max_files_per_pr: 50
+  max_comments_per_file: 10
+  min_confidence: 0.7
+  
+  # File types to skip during review
+  skip_file_types:
+    - ".md"
+    - ".txt" 
+    - ".json"
+    - ".yml"
+    - ".yaml"
+    - ".xml"
+    - ".lock"
+    - ".gitignore"
+    - ".gitattributes"
+    - ".env"
+    - ".log"
+    - ".csv"
+    - ".sql"
+    - ".png"
+    - ".jpg"
+    - ".jpeg"
+    - ".gif"
+    - ".svg"
+    - ".ico"
+    - ".woff"
+    - ".woff2"
+    - ".ttf"
+  
+  # Areas to focus on during review
+  focus_areas:
+    - "security"
+    - "performance" 
+    - "quality"
+    - "bugs"
+
+logging:
+  level: "INFO"
+  file: "neura_review.log"
