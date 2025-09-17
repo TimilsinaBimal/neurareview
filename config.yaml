@@ -13,6 +13,12 @@ ai:
   api_key: ${OPENAI_API_KEY}
   max_tokens: 4000
   temperature: 0.1
+  base_url: null  # Optional: custom API endpoint
+
+  # Agentic review settings
+  enable_agentic_review: true
+  max_context_iterations: 5
+  max_context_calls_per_iteration: 3
 
 review:
   # Review behavior settings
