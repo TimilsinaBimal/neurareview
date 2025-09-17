@@ -2,10 +2,10 @@
 
 import logging
 from typing import List
+
 from unidiff import PatchSet, UnidiffParseError
 
-from .models import FileDiff, DiffHunk, DiffLine, LineType
-
+from .models import DiffHunk, DiffLine, FileDiff, LineType
 
 logger = logging.getLogger(__name__)
 

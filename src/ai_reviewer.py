@@ -3,23 +3,22 @@
 import json
 import logging
 import os
-from typing import Dict, Any
-from openai import OpenAI
-from openai import AsyncOpenAI
+from typing import Any, Dict
+
+from openai import AsyncOpenAI, OpenAI
 
 from .config import AIConfig
+from .diff_parser import DiffParser
 from .models import (
+    ChangeType,
+    DiffHunk,
     FileDiff,
+    LineType,
     ReviewAnalysis,
+    ReviewComment,
     ReviewIssue,
     ReviewSeverity,
-    ReviewComment,
-    DiffHunk,
-    ChangeType,
-    LineType,
 )
-from .diff_parser import DiffParser
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,5 @@
 # NeuraReview - AI-Powered Code Review Agent
 
-![NeuraReview Banner](https://i.imgur.com/image.png) 
-
 **NeuraReview** is a state-of-the-art, AI-powered code review agent that automatically analyzes GitHub pull requests, identifies issues, and provides actionable, context-aware feedback. It helps development teams improve code quality, enhance security, and accelerate the review process.
 
 ---
@@ -31,8 +29,6 @@ NeuraReview follows a robust, multi-step process to deliver high-quality code re
 5.  **Clean Suggestions**: Each suggestion is passed through a cleaning function to remove any extra text, comments, or markdown, ensuring it is 100% pure code.
 6.  **Post Review**: The formatted comments and suggestions are posted to the pull request, with each comment placed on the exact line of code it refers to.
 
-![Architecture Diagram](https://i.imgur.com/diagram.png)
-
 ---
 
 ## ⚙️ Installation & Configuration
@@ -45,8 +41,8 @@ NeuraReview follows a robust, multi-step process to deliver high-quality code re
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/NeuraReview.git
-cd NeuraReview
+git clone https://github.com/TimilsinaBimal/neurareview.git
+cd neurareview
 
 # Create and activate a virtual environment
 python -m venv venv
@@ -120,7 +116,7 @@ NeuraReview/
 │   ├── github_client.py     # Interacts with the GitHub API
 │   ├── models.py            # Contains all data structures (dataclasses)
 │   └── neura_review.py      # The main orchestrator for the review process
-├── main_new.py              # The command-line interface (CLI) entry point
+├── main.py              # The command-line interface (CLI) entry point
 ├── config.yaml              # Example configuration file (not used directly)
 ├── requirements.txt         # Project dependencies
 └── README.md                # This file

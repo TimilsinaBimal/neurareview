@@ -19,11 +19,11 @@ review:
   max_files_per_pr: 50
   max_comments_per_file: 10
   min_confidence: 0.7
-  
+
   # File types to skip during review
   skip_file_types:
     - ".md"
-    - ".txt" 
+    - ".txt"
     - ".json"
     - ".yml"
     - ".yaml"
@@ -44,11 +44,11 @@ review:
     - ".woff"
     - ".woff2"
     - ".ttf"
-  
+
   # Areas to focus on during review
   focus_areas:
     - "security"
-    - "performance" 
+    - "performance"
     - "quality"
     - "bugs"
 

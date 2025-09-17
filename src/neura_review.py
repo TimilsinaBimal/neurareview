@@ -1,18 +1,17 @@
 """Main NeuraReview application orchestrator."""
 
+import asyncio
 import logging
 import sys
-from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import asyncio
+from typing import List, Optional
 
-from .config import Config
-from .github_client import GitHubClient
-from .diff_parser import DiffParser
 from .ai_reviewer import AIReviewer
 from .comment_manager import CommentManager
-from .models import ReviewAnalysis, FileDiff
-
+from .config import Config
+from .diff_parser import DiffParser
+from .github_client import GitHubClient
+from .models import FileDiff, ReviewAnalysis
 
 # Configure logging
 logging.basicConfig(

@@ -1,16 +1,15 @@
 """Comment management and formatting for GitHub reviews."""
 
 import logging
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from .models import (
+    ChangeType,
     ReviewAnalysis,
     ReviewComment,
-    ReviewSeverity,
-    ChangeType,
     ReviewIssue,
+    ReviewSeverity,
 )
-
 
 logger = logging.getLogger(__name__)
 

@@ -6,17 +6,12 @@ Usage: python main_new.py --repo owner/repo --pr 123 [--dry-run]
 
 import argparse
 import sys
-import os
-from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from src.neura_review import NeuraReview
 from src.config import Config
+from src.neura_review import NeuraReview
 
 
-def main():
+def main() -> int:
     """Main entry point for NeuraReview."""
     parser = argparse.ArgumentParser(
         description="AI-powered code review agent",
@@ -103,6 +98,8 @@ Examples:
 
             traceback.print_exc()
         return 1
+
+    return 0
 
 
 if __name__ == "__main__":

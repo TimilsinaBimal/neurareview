@@ -2,14 +2,14 @@
 
 import logging
 from typing import List
-from github import Github, Auth
+
+from github import Auth, Github
+from github.GithubException import GithubException
 from github.PullRequest import PullRequest
 from github.Repository import Repository
-from github.GithubException import GithubException
 
 from .config import GitHubConfig
-from .models import PRData, FileDiff, ReviewComment
-
+from .models import FileDiff, PRData, ReviewComment
 
 logger = logging.getLogger(__name__)
 

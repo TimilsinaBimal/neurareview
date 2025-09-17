@@ -16,6 +16,17 @@ dependencies = [
   "unidiff>=0.7.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.0.0",
+  "black>=24.0.0",
+  "isort>=5.13.0",
+  "flake8>=7.0.0",
+  "mypy>=1.11.0",
+  "bandit>=1.7.0",
+  "types-requests>=2.31.0",
+]
+
 [project.scripts]
 neura-review = "src.cli:main"
 
@@ -26,4 +37,40 @@ include-package-data = true
 where = ["."]
 include = ["src*"]
 
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
 
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv"]
+skips = ["B101", "B601"]

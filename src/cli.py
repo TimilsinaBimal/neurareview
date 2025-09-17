@@ -1,10 +1,8 @@
 import argparse
 import sys
-from pathlib import Path
 
-# Local imports
-from .neura_review import NeuraReview
 from .config import Config
+from .neura_review import NeuraReview
 
 
 def main() -> int:
@@ -48,5 +46,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

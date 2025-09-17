@@ -53,5 +53,3 @@ jobs:
             --repo "${{ github.repository }}" \
             --pr "${{ github.event.issue.number }}" \
             ${{ steps.args.outputs.args }}
-
-
