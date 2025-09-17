@@ -31,11 +31,8 @@ class CommentManager:
             ChangeType.BUG: "🐛",
             ChangeType.SECURITY: "🔒",
             ChangeType.PERFORMANCE: "⚡",
-            ChangeType.REFACTOR: "♻️",
-            ChangeType.STYLE: "🎨",
-            ChangeType.DOCUMENTATION: "📝",
-            ChangeType.TEST: "🧪",
-            ChangeType.OTHER: "🔧",
+            ChangeType.MEMORY: "💾",
+            ChangeType.ERROR_HANDLING: "⚠️",
         }
 
     def _get_badges(self, severity: ReviewSeverity, change_type: ChangeType) -> str:
@@ -64,45 +61,42 @@ class CommentManager:
         summary_parts = []
 
         # Header
-        summary_parts.append("## 🤖 AI Code Review Summary")
-        summary_parts.append(f"*Reviewed {total_files} files*")
+        summary_parts.append("## 🔍 Critical Issues Review")
+        summary_parts.append(f"*Reviewed {total_files} files for critical issues only*")
         summary_parts.append("")
 
-        # Issue summary
-        if any(count > 0 for count in severity_counts.values()):
-            summary_parts.append("### Issues Found")
+        # Issue summary - only show critical and high
+        critical_high_count = (
+            severity_counts[ReviewSeverity.CRITICAL]
+            + severity_counts[ReviewSeverity.HIGH]
+        )
+
+        if critical_high_count > 0:
+            summary_parts.append("### 🚨 Critical Issues Found")
 
             if severity_counts[ReviewSeverity.CRITICAL] > 0:
                 summary_parts.append(
                     f"🔴 **{severity_counts[ReviewSeverity.CRITICAL]} Critical** - "
-                    "Requires immediate attention"
+                    "Security vulnerabilities, data corruption, system crashes"
                 )
             if severity_counts[ReviewSeverity.HIGH] > 0:
                 summary_parts.append(
                     f"🟠 **{severity_counts[ReviewSeverity.HIGH]} High** - "
-                    "Should be addressed"
-                )
-            if severity_counts[ReviewSeverity.MEDIUM] > 0:
-                summary_parts.append(
-                    f"🟡 **{severity_counts[ReviewSeverity.MEDIUM]} Medium** - "
-                    "Consider addressing"
-                )
-            if severity_counts[ReviewSeverity.LOW] > 0:
-                summary_parts.append(
-                    f"🔵 **{severity_counts[ReviewSeverity.LOW]} Low** - "
-                    "Minor improvements"
-                )
-            if severity_counts[ReviewSeverity.INFO] > 0:
-                summary_parts.append(
-                    f"ℹ️ **{severity_counts[ReviewSeverity.INFO]} Info** - "
-                    "Educational notes"
+                    "Memory leaks, performance bottlenecks, major bugs"
                 )
 
             summary_parts.append("")
+            summary_parts.append(
+                "**Focus Areas:** Security, Memory, Performance, Critical Bugs"
+            )
+            summary_parts.append("")
 
         else:
-            summary_parts.append("### ✅ No Issues Found")
-            summary_parts.append("Great job! The code changes look good.")
+            summary_parts.append("### ✅ No Critical Issues Found")
+            summary_parts.append(
+                "Great job! No critical security, performance, or memory issues "
+                "detected."
+            )
             summary_parts.append("")
 
         # File-by-file summary
@@ -241,27 +235,78 @@ class CommentManager:
 
         return limited_comments
 
+    def filter_critical_issues_only(
+        self, analyses: List[ReviewAnalysis]
+    ) -> List[ReviewAnalysis]:
+        """Filter to only include critical and high severity issues."""
+        filtered_analyses = []
+
+        for analysis in analyses:
+            critical_issues = [
+                issue
+                for issue in analysis.issues
+                if issue.severity in [ReviewSeverity.CRITICAL, ReviewSeverity.HIGH]
+            ]
+
+            if critical_issues:
+                # Create new analysis with only critical issues
+                filtered_analysis = ReviewAnalysis(
+                    overall_comment=analysis.overall_comment,
+                    issues=critical_issues,
+                    comments=[
+                        c
+                        for c in analysis.comments
+                        if c.severity in [ReviewSeverity.CRITICAL, ReviewSeverity.HIGH]
+                    ],
+                    file_path=analysis.file_path,
+                    confidence=analysis.confidence,
+                )
+                filtered_analyses.append(filtered_analysis)
+
+        return filtered_analyses
+
     def prepare_review_data(
         self,
         analyses: List[ReviewAnalysis],
-        max_comments_per_file: int = 10,
-        min_confidence: float = 0.7,
+        max_comments_per_file: int = 5,  # Reduced from 10
+        min_confidence: float = 0.8,  # Increased from 0.7
     ) -> Dict[str, Any]:
-        """Prepare final review data for posting to GitHub."""
+        """Prepare final review data for posting to GitHub - critical issues only."""
+        # Filter to only critical and high severity issues
+        critical_analyses = self.filter_critical_issues_only(analyses)
+
+        if not critical_analyses:
+            return {
+                "overall_comment": (
+                    "## ✅ No Critical Issues Found\n\n"
+                    "Great job! No critical security, performance, or memory issues "
+                    "were detected in the code changes."
+                ),
+                "comments": [],
+                "statistics": {
+                    "total_files": len(analyses),
+                    "files_with_issues": 0,
+                    "total_issues": 0,
+                    "total_comments": 0,
+                },
+            }
+
         # Filter and process comments
         all_comments = []
-        for analysis in analyses:
+        for analysis in critical_analyses:
             all_comments.extend(analysis.comments)
 
         # Apply filters
-        filtered_comments = self.filter_comments_by_confidence(analyses, min_confidence)
+        filtered_comments = self.filter_comments_by_confidence(
+            critical_analyses, min_confidence
+        )
         deduplicated_comments = self.deduplicate_comments(filtered_comments)
         limited_comments = self.limit_comments_per_file(
             deduplicated_comments, max_comments_per_file
         )
 
         # Generate overall review
-        overall_comment = self.format_overall_review(analyses)
+        overall_comment = self.format_overall_review(critical_analyses)
 
         # Log statistics
         logger.info(
