@@ -35,7 +35,7 @@ jobs:
 
       - name: Install NeuraReview
         run: |
-          pip install .
+          pip install git+https://github.com/TimilsinaBimal/neurareview.git
 
       - name: Build CLI args from comment
         id: args
