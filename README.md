@@ -125,9 +125,6 @@ When there are no critical issues, it simply says:
 ## ✅ No Critical Issues Found
 
 Great job! No critical security, performance, or memory issues detected.
-```
-
----
 
 ## ⚙️ Local Installation & Configuration
 
