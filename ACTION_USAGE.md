@@ -32,6 +32,8 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      metadata: read
+
 
     steps:
       - name: Checkout repository
@@ -145,4 +147,5 @@ Found a bug or want to contribute? Check out the [NeuraReview repository](https:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
