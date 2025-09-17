@@ -148,57 +148,7 @@ class ContextTool:
         Returns:
             Dict with 'definition', 'file_path', 'success', and optional 'error' keys
         """
-        try:
-            if file_path:
-                # Search in specific file
-                file_content = self.get_file_content(file_path)
-                if not file_content["success"]:
-                    return {
-                        "definition": "",
-                        "file_path": "",
-                        "success": False,
-                        "error": file_content.get("error", "Unknown error"),
-                    }
-
-                definition = self._extract_function_definition(file_content["content"], function_name)
-                if definition:
-                    return {
-                        "definition": definition,
-                        "file_path": file_path,
-                        "success": True,
-                    }
-            else:
-                # Search across codebase
-                search_results = self.search_codebase(f"def {function_name}", ".py", 5)
-                if search_results["success"]:
-                    for result in search_results["results"]:
-                        file_content = self.get_file_content(result["file_path"])
-                        if file_content["success"]:
-                            definition = self._extract_function_definition(
-                                file_content["content"], function_name
-                            )
-                            if definition:
-                                return {
-                                    "definition": definition,
-                                    "file_path": result["file_path"],
-                                    "success": True,
-                                }
-
-            return {
-                "definition": "",
-                "file_path": "",
-                "success": False,
-                "error": f"Function '{function_name}' not found",
-            }
-
-        except Exception as e:
-            logger.error(f"Error finding function definition for '{function_name}': {e}")
-            return {
-                "definition": "",
-                "file_path": "",
-                "success": False,
-                "error": str(e),
-            }
+        return self._find_definition(item_name=function_name, item_type="function", file_path=file_path)
 
     def find_class_definition(
         self, class_name: str, file_path: Optional[str] = None
@@ -213,55 +163,7 @@ class ContextTool:
         Returns:
             Dict with 'definition', 'file_path', 'success', and optional 'error' keys
         """
-        try:
-            if file_path:
-                # Search in specific file
-                file_content = self.get_file_content(file_path)
-                if not file_content["success"]:
-                    return {
-                        "definition": "",
-                        "file_path": "",
-                        "success": False,
-                        "error": file_content.get("error", "Unknown error"),
-                    }
-
-                definition = self._extract_class_definition(file_content["content"], class_name)
-                if definition:
-                    return {
-                        "definition": definition,
-                        "file_path": file_path,
-                        "success": True,
-                    }
-            else:
-                # Search across codebase
-                search_results = self.search_codebase(f"class {class_name}", ".py", 5)
-                if search_results["success"]:
-                    for result in search_results["results"]:
-                        file_content = self.get_file_content(result["file_path"])
-                        if file_content["success"]:
-                            definition = self._extract_class_definition(file_content["content"], class_name)
-                            if definition:
-                                return {
-                                    "definition": definition,
-                                    "file_path": result["file_path"],
-                                    "success": True,
-                                }
-
-            return {
-                "definition": "",
-                "file_path": "",
-                "success": False,
-                "error": f"Class '{class_name}' not found",
-            }
-
-        except Exception as e:
-            logger.error(f"Error finding class definition for '{class_name}': {e}")
-            return {
-                "definition": "",
-                "file_path": "",
-                "success": False,
-                "error": str(e),
-            }
+        return self._find_definition(item_name=class_name, item_type="class", file_path=file_path)
 
     def find_import_usages(self, module_name: str) -> Dict[str, Union[List[Dict], bool]]:
         """
@@ -337,6 +239,85 @@ class ContextTool:
         except Exception as e:
             logger.error(f"Error finding test files for '{source_file}': {e}")
             return {"test_files": [], "success": False, "error": str(e)}
+
+    def _find_definition(
+        self, item_name: str, item_type: str, file_path: Optional[str] = None
+    ) -> Dict[str, Union[str, bool]]:
+        """
+        Generic helper method to find function or class definitions.
+
+        Args:
+            item_name: Name of the item to find (function or class name)
+            item_type: Type of item ("function" or "class")
+            file_path: Specific file to search in (optional)
+
+        Returns:
+            Dict with 'definition', 'file_path', 'success', and optional 'error' keys
+        """
+        try:
+            # Determine search pattern and extraction method based on item type
+            if item_type == "function":
+                search_pattern = f"def {item_name}"
+                extract_method = self._extract_function_definition
+            elif item_type == "class":
+                search_pattern = f"class {item_name}"
+                extract_method = self._extract_class_definition
+            else:
+                return {
+                    "definition": "",
+                    "file_path": "",
+                    "success": False,
+                    "error": f"Unsupported item type: {item_type}",
+                }
+
+            if file_path:
+                # Search in specific file
+                file_content = self.get_file_content(file_path)
+                if not file_content["success"]:
+                    return {
+                        "definition": "",
+                        "file_path": "",
+                        "success": False,
+                        "error": file_content.get("error", "Unknown error"),
+                    }
+
+                definition = extract_method(file_content["content"], item_name)
+                if definition:
+                    return {
+                        "definition": definition,
+                        "file_path": file_path,
+                        "success": True,
+                    }
+            else:
+                # Search across codebase
+                search_results = self.search_codebase(search_pattern, ".py", 5)
+                if search_results["success"]:
+                    for result in search_results["results"]:
+                        file_content = self.get_file_content(result["file_path"])
+                        if file_content["success"]:
+                            definition = extract_method(file_content["content"], item_name)
+                            if definition:
+                                return {
+                                    "definition": definition,
+                                    "file_path": result["file_path"],
+                                    "success": True,
+                                }
+
+            return {
+                "definition": "",
+                "file_path": "",
+                "success": False,
+                "error": f"{item_type.capitalize()} '{item_name}' not found",
+            }
+
+        except Exception as e:
+            logger.error(f"Error finding {item_type} definition for '{item_name}': {e}")
+            return {
+                "definition": "",
+                "file_path": "",
+                "success": False,
+                "error": str(e),
+            }
 
     def _extract_snippet_around_match(self, content: str, query: str, context_lines: int = 3) -> str:
         """Extract a snippet of code around a search match."""
