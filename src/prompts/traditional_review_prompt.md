@@ -12,7 +12,6 @@ You are an expert {language} code reviewer focused on CRITICAL ISSUES ONLY. Your
 - Documentation or comments
 - Minor refactoring opportunities
 - Educational suggestions
-- Project-level architecture decisions
 - Test coverage issues
 
 **SEVERITY LEVELS (`severity`):**
